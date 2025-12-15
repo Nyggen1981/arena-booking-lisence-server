@@ -12,6 +12,18 @@ type CreateBody = {
 function isAuthorized(request: Request): boolean {
   const adminSecretHeader = request.headers.get("x-admin-secret") ?? "";
   const expected = process.env.LICENSE_ADMIN_PASSWORD ?? "";
+  
+  // Debug info (kun i development)
+  if (process.env.NODE_ENV === "development") {
+    console.log("Auth check:", {
+      hasHeader: !!adminSecretHeader,
+      headerLength: adminSecretHeader.length,
+      hasExpected: expected.length > 0,
+      expectedLength: expected.length,
+      match: adminSecretHeader === expected,
+    });
+  }
+  
   return expected.length > 0 && adminSecretHeader === expected;
 }
 
