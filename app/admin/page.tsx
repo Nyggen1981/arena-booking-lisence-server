@@ -27,8 +27,6 @@ type NewOrgForm = {
   slug: string;
   contactEmail: string;
   contactName: string;
-  licenseType: string;
-  expiresInDays: number;
 };
 
 export default function AdminDashboard() {
@@ -40,13 +38,13 @@ export default function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [editingOrg, setEditingOrg] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<"free" | "standard" | null>(null);
   const [newOrg, setNewOrg] = useState<NewOrgForm>({
     name: "",
     slug: "",
     contactEmail: "",
-    contactName: "",
-    licenseType: "trial",
-    expiresInDays: 30
+    contactName: ""
   });
   const [creating, setCreating] = useState(false);
 
@@ -125,8 +123,7 @@ export default function AdminDashboard() {
     setSuccess("");
 
     try {
-      const expiresAt = new Date(Date.now() + newOrg.expiresInDays * 24 * 60 * 60 * 1000);
-      
+      // Opprett med inaktiv status (isActive: false) og en langt frem dato
       const response = await fetch("/api/license/create", {
         method: "POST",
         headers: {
@@ -138,24 +135,31 @@ export default function AdminDashboard() {
           slug: newOrg.slug,
           contactEmail: newOrg.contactEmail,
           contactName: newOrg.contactName || null,
-          licenseType: newOrg.licenseType,
-          expiresAt: expiresAt.toISOString()
+          licenseType: "free", // Default
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
         })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess(`Organisasjon "${newOrg.name}" opprettet! Lisensnøkkel: ${data.licenseKey}`);
-        setNewOrg({
-          name: "",
-          slug: "",
-          contactEmail: "",
-          contactName: "",
-          licenseType: "trial",
-          expiresInDays: 30
-        });
+        setSuccess(`"${newOrg.name}" opprettet! Lisensnøkkel: ${data.licenseKey}`);
+        setNewOrg({ name: "", slug: "", contactEmail: "", contactName: "" });
         setShowAddForm(false);
+        await loadOrganizations(password);
+        
+        // Sett til inaktiv etter opprettelse
+        await fetch("/api/license/update", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-secret": password
+          },
+          body: JSON.stringify({
+            slug: data.slug,
+            isActive: false
+          })
+        });
         await loadOrganizations(password);
       } else {
         setError(data.error || "Kunne ikke opprette organisasjon");
@@ -177,40 +181,75 @@ export default function AdminDashboard() {
     }
   };
 
-  const toggleActive = async (org: Organization) => {
+  const updateOrgStatus = async (org: Organization, status: "inactive" | "free" | "standard", expiresAt?: string) => {
     try {
+      const updates: any = {
+        slug: org.slug,
+        isActive: status !== "inactive",
+        licenseType: status === "inactive" ? org.licenseType : status
+      };
+
+      if (expiresAt && status !== "inactive") {
+        updates.expiresAt = expiresAt;
+      }
+
       const response = await fetch("/api/license/update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-admin-secret": password
         },
-        body: JSON.stringify({
-          slug: org.slug,
-          isActive: !org.isActive
-        })
+        body: JSON.stringify(updates)
       });
 
       if (response.ok) {
         await loadOrganizations(password);
+        setEditingOrg(null);
+      } else {
+        setError("Kunne ikke oppdatere status");
       }
     } catch (err) {
-      setError("Kunne ikke oppdatere status");
+      setError("Nettverksfeil");
     }
   };
 
-  const getStatusInfo = (org: Organization) => {
-    if (org.isSuspended) return { text: "Suspendert", color: "#ef4444", bg: "rgba(239, 68, 68, 0.1)" };
-    if (!org.isActive) return { text: "Inaktiv", color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)" };
+  const getOrgStatus = (org: Organization): "inactive" | "free" | "standard" => {
+    if (!org.isActive) return "inactive";
+    if (org.licenseType === "standard" || org.licenseType === "premium") return "standard";
+    return "free";
+  };
+
+  const getStatusDisplay = (org: Organization) => {
+    const status = getOrgStatus(org);
+    if (status === "inactive") {
+      return { text: "Inaktiv", color: "#6b7280", bg: "rgba(107, 114, 128, 0.15)" };
+    }
     
     const now = new Date();
     const expires = new Date(org.expiresAt);
     const daysLeft = Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (daysLeft < 0) return { text: "Utløpt", color: "#ef4444", bg: "rgba(239, 68, 68, 0.1)" };
-    if (daysLeft <= 7) return { text: `${daysLeft}d`, color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" };
-    if (daysLeft <= 30) return { text: `${daysLeft}d`, color: "#eab308", bg: "rgba(234, 179, 8, 0.1)" };
-    return { text: "Aktiv", color: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" };
+    if (daysLeft < 0) {
+      return { text: "Utløpt", color: "#ef4444", bg: "rgba(239, 68, 68, 0.15)" };
+    }
+    
+    if (status === "free") {
+      return { 
+        text: daysLeft <= 30 ? `Gratis (${daysLeft}d)` : "Gratis", 
+        color: "#22c55e", 
+        bg: "rgba(34, 197, 94, 0.15)" 
+      };
+    }
+    
+    return { 
+      text: daysLeft <= 30 ? `Standard (${daysLeft}d)` : "Standard", 
+      color: "#3b82f6", 
+      bg: "rgba(59, 130, 246, 0.15)" 
+    };
+  };
+
+  const formatDateForInput = (dateStr: string) => {
+    return new Date(dateStr).toISOString().split("T")[0];
   };
 
   const formatDate = (date: string) => {
@@ -224,7 +263,6 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div style={styles.loading}>
-        <div style={styles.spinner}></div>
         <p>Laster...</p>
       </div>
     );
@@ -267,6 +305,9 @@ export default function AdminDashboard() {
         <div style={styles.modalOverlay} onClick={() => setShowAddForm(false)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <h2 style={styles.modalTitle}>Ny organisasjon</h2>
+            <p style={styles.modalHint}>
+              Organisasjonen opprettes som inaktiv. Du kan aktivere og sette utløpsdato etterpå.
+            </p>
             <form onSubmit={handleCreateOrg}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Navn *</label>
@@ -277,11 +318,12 @@ export default function AdminDashboard() {
                   placeholder="F.eks. Haugesund IL"
                   required
                   style={styles.input}
+                  autoFocus
                 />
               </div>
               
               <div style={styles.formGroup}>
-                <label style={styles.label}>Slug (URL-vennlig)</label>
+                <label style={styles.label}>Slug</label>
                 <input
                   type="text"
                   value={newOrg.slug}
@@ -290,56 +332,30 @@ export default function AdminDashboard() {
                   required
                   style={styles.input}
                 />
+                <span style={styles.hint}>Brukes i URL og som identifikator</span>
               </div>
 
-              <div style={styles.formRow}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Kontakt-epost *</label>
-                  <input
-                    type="email"
-                    value={newOrg.contactEmail}
-                    onChange={e => setNewOrg({...newOrg, contactEmail: e.target.value})}
-                    placeholder="admin@klubb.no"
-                    required
-                    style={styles.input}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Kontaktperson</label>
-                  <input
-                    type="text"
-                    value={newOrg.contactName}
-                    onChange={e => setNewOrg({...newOrg, contactName: e.target.value})}
-                    placeholder="Ola Nordmann"
-                    style={styles.input}
-                  />
-                </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Kontakt-epost *</label>
+                <input
+                  type="email"
+                  value={newOrg.contactEmail}
+                  onChange={e => setNewOrg({...newOrg, contactEmail: e.target.value})}
+                  placeholder="admin@klubb.no"
+                  required
+                  style={styles.input}
+                />
               </div>
 
-              <div style={styles.formRow}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Lisenstype</label>
-                  <select
-                    value={newOrg.licenseType}
-                    onChange={e => setNewOrg({...newOrg, licenseType: e.target.value})}
-                    style={styles.select}
-                  >
-                    <option value="free">Free (10 brukere)</option>
-                    <option value="trial">Trial (25 brukere, 30 dager)</option>
-                    <option value="standard">Standard (50 brukere)</option>
-                    <option value="premium">Premium (ubegrenset)</option>
-                  </select>
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Utløper om (dager)</label>
-                  <input
-                    type="number"
-                    value={newOrg.expiresInDays}
-                    onChange={e => setNewOrg({...newOrg, expiresInDays: parseInt(e.target.value) || 30})}
-                    min="1"
-                    style={styles.input}
-                  />
-                </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Kontaktperson</label>
+                <input
+                  type="text"
+                  value={newOrg.contactName}
+                  onChange={e => setNewOrg({...newOrg, contactName: e.target.value})}
+                  placeholder="Ola Nordmann"
+                  style={styles.input}
+                />
               </div>
 
               <div style={styles.modalActions}>
@@ -355,7 +371,7 @@ export default function AdminDashboard() {
                   disabled={creating}
                   style={styles.submitButton}
                 >
-                  {creating ? "Oppretter..." : "Opprett og generer nøkkel"}
+                  {creating ? "Oppretter..." : "Opprett"}
                 </button>
               </div>
             </form>
@@ -375,78 +391,147 @@ export default function AdminDashboard() {
           </div>
         ) : (
           organizations.map(org => {
-            const status = getStatusInfo(org);
+            const status = getOrgStatus(org);
+            const statusDisplay = getStatusDisplay(org);
+            const isEditing = editingOrg === org.id;
+
             return (
               <div key={org.id} style={styles.orgCard}>
                 <div style={styles.orgHeader}>
                   <div>
                     <h3 style={styles.orgName}>{org.name}</h3>
-                    <p style={styles.orgSlug}>{org.slug}</p>
+                    <p style={styles.orgSlug}>{org.slug} • {org.contactEmail}</p>
                   </div>
-                  <div style={styles.orgBadges}>
-                    <span style={{
-                      ...styles.badge,
-                      background: org.licenseType === "premium" ? "#8b5cf6" :
-                                  org.licenseType === "standard" ? "#3b82f6" :
-                                  org.licenseType === "trial" ? "#f59e0b" : "#6b7280",
-                    }}>
-                      {org.licenseType}
-                    </span>
-                    <span style={{
-                      ...styles.statusBadge,
-                      background: status.bg,
-                      color: status.color,
-                      borderColor: status.color
-                    }}>
-                      {status.text}
-                    </span>
-                  </div>
+                  <span style={{
+                    ...styles.statusBadge,
+                    background: statusDisplay.bg,
+                    color: statusDisplay.color,
+                  }}>
+                    {statusDisplay.text}
+                  </span>
                 </div>
 
+                {/* License Key */}
                 <div style={styles.keySection}>
-                  <label style={styles.keyLabel}>Lisensnøkkel</label>
                   <div style={styles.keyRow}>
                     <code style={styles.keyCode}>{org.licenseKey}</code>
                     <button
                       onClick={() => copyToClipboard(org.licenseKey)}
                       style={styles.copyButton}
                     >
-                      {copiedKey === org.licenseKey ? "✓ Kopiert!" : "Kopier"}
+                      {copiedKey === org.licenseKey ? "✓ Kopiert!" : "Kopier nøkkel"}
                     </button>
                   </div>
                 </div>
 
-                <div style={styles.orgDetails}>
-                  <div style={styles.detailItem}>
-                    <span style={styles.detailLabel}>Kontakt</span>
-                    <span>{org.contactEmail}</span>
+                {/* Status Controls */}
+                <div style={styles.statusSection}>
+                  <div style={styles.statusButtons}>
+                    <button
+                      onClick={() => {
+                        if (status !== "inactive") {
+                          updateOrgStatus(org, "inactive");
+                        }
+                      }}
+                      style={{
+                        ...styles.statusButton,
+                        ...(status === "inactive" ? styles.statusButtonActive : {}),
+                        borderColor: status === "inactive" ? "#6b7280" : "#333"
+                      }}
+                    >
+                      Inaktiv
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (status === "free") return;
+                        setEditingOrg(org.id);
+                        setPendingStatus("free");
+                      }}
+                      style={{
+                        ...styles.statusButton,
+                        ...(status === "free" ? styles.statusButtonActiveFree : {}),
+                        borderColor: status === "free" ? "#22c55e" : "#333"
+                      }}
+                    >
+                      Gratis
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (status === "standard") return;
+                        setEditingOrg(org.id);
+                        setPendingStatus("standard");
+                      }}
+                      style={{
+                        ...styles.statusButton,
+                        ...(status === "standard" ? styles.statusButtonActiveStandard : {}),
+                        borderColor: status === "standard" ? "#3b82f6" : "#333"
+                      }}
+                    >
+                      Standard
+                    </button>
                   </div>
-                  <div style={styles.detailItem}>
-                    <span style={styles.detailLabel}>Utløper</span>
-                    <span>{formatDate(org.expiresAt)}</span>
-                  </div>
-                  <div style={styles.detailItem}>
-                    <span style={styles.detailLabel}>Brukere</span>
-                    <span>{org.totalUsers}</span>
-                  </div>
-                  <div style={styles.detailItem}>
-                    <span style={styles.detailLabel}>Bookinger</span>
-                    <span>{org.totalBookings}</span>
-                  </div>
+
+                  {/* Date picker when editing */}
+                  {isEditing && pendingStatus && (
+                    <div style={styles.datePickerRow}>
+                      <label style={styles.dateLabel}>Betalt til:</label>
+                      <input
+                        type="date"
+                        defaultValue={formatDateForInput(org.expiresAt)}
+                        style={styles.dateInput}
+                        id={`date-${org.id}`}
+                      />
+                      <button
+                        onClick={() => {
+                          const dateInput = document.getElementById(`date-${org.id}`) as HTMLInputElement;
+                          updateOrgStatus(org, pendingStatus, new Date(dateInput.value).toISOString());
+                          setPendingStatus(null);
+                        }}
+                        style={{
+                          ...styles.saveDateButton,
+                          background: pendingStatus === "free" ? "#22c55e" : "#3b82f6"
+                        }}
+                      >
+                        Lagre som {pendingStatus === "free" ? "Gratis" : "Standard"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingOrg(null);
+                          setPendingStatus(null);
+                        }}
+                        style={styles.cancelDateButton}
+                      >
+                        Avbryt
+                      </button>
+                    </div>
+                  )}
+
+                  {status !== "inactive" && !isEditing && (
+                    <p style={styles.expiresText}>
+                      Utløper: {formatDate(org.expiresAt)}
+                      <button
+                        onClick={() => {
+                          setEditingOrg(org.id);
+                          setPendingStatus(status as "free" | "standard");
+                        }}
+                        style={styles.editDateButton}
+                      >
+                        Endre dato
+                      </button>
+                    </p>
+                  )}
                 </div>
 
-                <div style={styles.orgActions}>
-                  <button
-                    onClick={() => toggleActive(org)}
-                    style={{
-                      ...styles.actionButton,
-                      background: org.isActive ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)",
-                      color: org.isActive ? "#ef4444" : "#22c55e"
-                    }}
-                  >
-                    {org.isActive ? "Deaktiver" : "Aktiver"}
-                  </button>
-                </div>
+                {/* Stats */}
+                {org.lastHeartbeat && (
+                  <div style={styles.statsRow}>
+                    <span style={styles.stat}>👥 {org.totalUsers} brukere</span>
+                    <span style={styles.stat}>📅 {org.totalBookings} bookinger</span>
+                    <span style={styles.stat}>
+                      🕐 Sist aktiv: {new Date(org.lastHeartbeat).toLocaleDateString("nb-NO")}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })
@@ -462,24 +547,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "#0a0a0a",
     color: "#fff",
     padding: "1.5rem",
+    maxWidth: "900px",
+    margin: "0 auto",
   },
   loading: {
     minHeight: "100vh",
     display: "flex",
-    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     background: "#0a0a0a",
     color: "#fff",
-    gap: "1rem",
-  },
-  spinner: {
-    width: "40px",
-    height: "40px",
-    border: "3px solid #333",
-    borderTopColor: "#3b82f6",
-    borderRadius: "50%",
-    animation: "spin 1s linear infinite",
   },
   header: {
     display: "flex",
@@ -566,20 +643,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid #262626",
     padding: "1.5rem",
     width: "100%",
-    maxWidth: "500px",
+    maxWidth: "450px",
   },
   modalTitle: {
     fontSize: "1.25rem",
     fontWeight: "600",
+    marginBottom: "0.5rem",
+  },
+  modalHint: {
+    color: "#737373",
+    fontSize: "0.85rem",
     marginBottom: "1.5rem",
   },
   formGroup: {
     marginBottom: "1rem",
-    flex: 1,
-  },
-  formRow: {
-    display: "flex",
-    gap: "1rem",
   },
   label: {
     display: "block",
@@ -596,14 +673,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#fff",
     fontSize: "0.95rem",
   },
-  select: {
-    width: "100%",
-    padding: "0.75rem",
-    background: "#0a0a0a",
-    border: "1px solid #333",
-    borderRadius: "6px",
-    color: "#fff",
-    fontSize: "0.95rem",
+  hint: {
+    display: "block",
+    marginTop: "0.25rem",
+    fontSize: "0.75rem",
+    color: "#525252",
   },
   modalActions: {
     display: "flex",
@@ -621,7 +695,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "0.9rem",
   },
   submitButton: {
-    flex: 2,
+    flex: 1,
     padding: "0.75rem",
     background: "#3b82f6",
     border: "none",
@@ -679,36 +753,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#737373",
     margin: "0.25rem 0 0 0",
   },
-  orgBadges: {
-    display: "flex",
-    gap: "0.5rem",
-  },
-  badge: {
-    padding: "0.25rem 0.6rem",
-    borderRadius: "4px",
-    fontSize: "0.75rem",
-    fontWeight: "500",
-    color: "#fff",
-    textTransform: "capitalize",
-  },
   statusBadge: {
-    padding: "0.25rem 0.6rem",
-    borderRadius: "4px",
-    fontSize: "0.75rem",
+    padding: "0.35rem 0.75rem",
+    borderRadius: "6px",
+    fontSize: "0.8rem",
     fontWeight: "500",
-    border: "1px solid",
   },
   keySection: {
     background: "#0a0a0a",
     borderRadius: "8px",
     padding: "0.75rem 1rem",
     marginBottom: "1rem",
-  },
-  keyLabel: {
-    fontSize: "0.75rem",
-    color: "#737373",
-    display: "block",
-    marginBottom: "0.5rem",
   },
   keyRow: {
     display: "flex",
@@ -732,34 +787,104 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "0.8rem",
     whiteSpace: "nowrap",
   },
-  orgDetails: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "1rem",
+  statusSection: {
     marginBottom: "1rem",
-    paddingBottom: "1rem",
-    borderBottom: "1px solid #1f1f1f",
   },
-  detailItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.25rem",
-  },
-  detailLabel: {
-    fontSize: "0.75rem",
-    color: "#737373",
-  },
-  orgActions: {
+  statusButtons: {
     display: "flex",
     gap: "0.5rem",
+    marginBottom: "0.75rem",
   },
-  actionButton: {
-    padding: "0.5rem 1rem",
-    background: "rgba(239, 68, 68, 0.1)",
-    border: "none",
+  statusButton: {
+    flex: 1,
+    padding: "0.6rem",
+    background: "transparent",
+    border: "1px solid #333",
     borderRadius: "6px",
+    color: "#737373",
     cursor: "pointer",
     fontSize: "0.85rem",
-    fontWeight: "500",
+    transition: "all 0.15s",
+  },
+  statusButtonActive: {
+    background: "rgba(107, 114, 128, 0.15)",
+    color: "#9ca3af",
+    borderColor: "#6b7280",
+  },
+  statusButtonActiveFree: {
+    background: "rgba(34, 197, 94, 0.15)",
+    color: "#22c55e",
+    borderColor: "#22c55e",
+  },
+  statusButtonActiveStandard: {
+    background: "rgba(59, 130, 246, 0.15)",
+    color: "#3b82f6",
+    borderColor: "#3b82f6",
+  },
+  datePickerRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.75rem",
+    background: "#1a1a1a",
+    borderRadius: "6px",
+    flexWrap: "wrap",
+  },
+  dateLabel: {
+    fontSize: "0.85rem",
+    color: "#a3a3a3",
+  },
+  dateInput: {
+    padding: "0.5rem",
+    background: "#0a0a0a",
+    border: "1px solid #333",
+    borderRadius: "4px",
+    color: "#fff",
+    fontSize: "0.9rem",
+  },
+  saveDateButton: {
+    padding: "0.5rem 1rem",
+    background: "#22c55e",
+    border: "none",
+    borderRadius: "4px",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+  },
+  cancelDateButton: {
+    padding: "0.5rem 0.75rem",
+    background: "transparent",
+    border: "1px solid #333",
+    borderRadius: "4px",
+    color: "#737373",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+  },
+  expiresText: {
+    fontSize: "0.85rem",
+    color: "#737373",
+    margin: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+  editDateButton: {
+    padding: "0.25rem 0.5rem",
+    background: "transparent",
+    border: "none",
+    color: "#3b82f6",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+  },
+  statsRow: {
+    display: "flex",
+    gap: "1rem",
+    paddingTop: "0.75rem",
+    borderTop: "1px solid #1f1f1f",
+    flexWrap: "wrap",
+  },
+  stat: {
+    fontSize: "0.8rem",
+    color: "#525252",
   },
 };
