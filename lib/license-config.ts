@@ -1,8 +1,8 @@
 export const LICENSE_TYPES = {
-  free: {
-    name: "Free",
-    maxUsers: 10,
-    maxResources: 2,
+  inactive: {
+    name: "Inaktiv",
+    maxUsers: 0,
+    maxResources: 0,
     gracePeriodDays: 0,
     features: {
       emailNotifications: false,
@@ -11,14 +11,25 @@ export const LICENSE_TYPES = {
     },
     price: 0
   },
-  trial: {
-    name: "Trial",
-    maxUsers: 25,
-    maxResources: 5,
-    gracePeriodDays: 7,
-    trialDays: 30,
+  pilot: {
+    name: "Pilotkunde",
+    maxUsers: 100,
+    maxResources: 20,
+    gracePeriodDays: 14,
     features: {
       emailNotifications: true,
+      customBranding: true,
+      prioritySupport: true
+    },
+    price: 0  // Gratis for pilotkunder
+  },
+  free: {
+    name: "Gratis",
+    maxUsers: 10,
+    maxResources: 2,
+    gracePeriodDays: 0,
+    features: {
+      emailNotifications: false,
       customBranding: false,
       prioritySupport: false
     },

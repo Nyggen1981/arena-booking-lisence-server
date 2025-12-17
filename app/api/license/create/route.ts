@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     contactEmail, 
     contactName,
     contactPhone,
-    licenseType = "trial", 
+    licenseType = "inactive", 
     expiresAt,
     maxUsers,
     maxResources,
@@ -74,8 +74,8 @@ export async function POST(request: Request) {
     }
     expiresAtDate = parsed;
   } else {
-    // Default: 30 dager for trial, 365 dager for andre
-    const days = licenseType === "trial" ? 30 : 365;
+    // Default: 365 dager for alle aktive lisenser
+    const days = licenseType === "inactive" ? 365 : 365;
     expiresAtDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
   }
 

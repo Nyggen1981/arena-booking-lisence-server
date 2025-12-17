@@ -33,7 +33,7 @@ async function main() {
       name: "Test Klubb",
       slug: "test-klubb",
       contactEmail: "test@example.com",
-      licenseType: "trial",
+      licenseType: "free",
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 dager
     }
   });

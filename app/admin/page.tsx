@@ -39,7 +39,7 @@ export default function AdminDashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [editingOrg, setEditingOrg] = useState<string | null>(null);
-  const [pendingStatus, setPendingStatus] = useState<"free" | "standard" | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<"inactive" | "pilot" | "free" | "standard" | "premium" | null>(null);
   const [newOrg, setNewOrg] = useState<NewOrgForm>({
     name: "",
     slug: "",
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateOrgStatus = async (org: Organization, status: "inactive" | "free" | "standard", expiresAt?: string) => {
+  const updateOrgStatus = async (org: Organization, status: "inactive" | "pilot" | "free" | "standard" | "premium", expiresAt?: string) => {
     try {
       const updates: any = {
         slug: org.slug,
@@ -213,10 +213,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const getOrgStatus = (org: Organization): "inactive" | "free" | "standard" => {
+  const getOrgStatus = (org: Organization): "inactive" | "pilot" | "free" | "standard" | "premium" => {
     if (!org.isActive) return "inactive";
-    if (org.licenseType === "standard" || org.licenseType === "premium") return "standard";
-    return "free";
+    const type = org.licenseType.toLowerCase();
+    if (type === "pilot") return "pilot";
+    if (type === "premium") return "premium";
+    if (type === "standard") return "standard";
+    if (type === "free") return "free";
+    return "inactive";
   };
 
   const getStatusDisplay = (org: Organization) => {
@@ -233,18 +237,26 @@ export default function AdminDashboard() {
       return { text: "Utløpt", color: "#ef4444", bg: "rgba(239, 68, 68, 0.15)" };
     }
     
-    if (status === "free") {
-      return { 
-        text: daysLeft <= 30 ? `Gratis (${daysLeft}d)` : "Gratis", 
-        color: "#22c55e", 
-        bg: "rgba(34, 197, 94, 0.15)" 
-      };
-    }
+    const statusNames: Record<string, string> = {
+      pilot: "Pilotkunde",
+      free: "Gratis",
+      standard: "Standard",
+      premium: "Premium"
+    };
+    
+    const statusColors: Record<string, { color: string; bg: string }> = {
+      pilot: { color: "#a855f7", bg: "rgba(168, 85, 247, 0.15)" },
+      free: { color: "#22c55e", bg: "rgba(34, 197, 94, 0.15)" },
+      standard: { color: "#3b82f6", bg: "rgba(59, 130, 246, 0.15)" },
+      premium: { color: "#f59e0b", bg: "rgba(245, 158, 11, 0.15)" }
+    };
+    
+    const colors = statusColors[status] || statusColors.free;
+    const name = statusNames[status] || "Ukjent";
     
     return { 
-      text: daysLeft <= 30 ? `Standard (${daysLeft}d)` : "Standard", 
-      color: "#3b82f6", 
-      bg: "rgba(59, 130, 246, 0.15)" 
+      text: daysLeft <= 30 ? `${name} (${daysLeft}d)` : name, 
+      ...colors
     };
   };
 
@@ -443,6 +455,20 @@ export default function AdminDashboard() {
                     </button>
                     <button
                       onClick={() => {
+                        if (status === "pilot") return;
+                        setEditingOrg(org.id);
+                        setPendingStatus("pilot");
+                      }}
+                      style={{
+                        ...styles.statusButton,
+                        ...(status === "pilot" ? styles.statusButtonActivePilot : {}),
+                        borderColor: status === "pilot" ? "#a855f7" : "#333"
+                      }}
+                    >
+                      Pilotkunde
+                    </button>
+                    <button
+                      onClick={() => {
                         if (status === "free") return;
                         setEditingOrg(org.id);
                         setPendingStatus("free");
@@ -469,10 +495,24 @@ export default function AdminDashboard() {
                     >
                       Standard
                     </button>
+                    <button
+                      onClick={() => {
+                        if (status === "premium") return;
+                        setEditingOrg(org.id);
+                        setPendingStatus("premium");
+                      }}
+                      style={{
+                        ...styles.statusButton,
+                        ...(status === "premium" ? styles.statusButtonActivePremium : {}),
+                        borderColor: status === "premium" ? "#f59e0b" : "#333"
+                      }}
+                    >
+                      Premium
+                    </button>
                   </div>
 
                   {/* Date picker when editing */}
-                  {isEditing && pendingStatus && (
+                  {isEditing && pendingStatus && pendingStatus !== "inactive" && (
                     <div style={styles.datePickerRow}>
                       <label style={styles.dateLabel}>Betalt til:</label>
                       <input
@@ -489,10 +529,16 @@ export default function AdminDashboard() {
                         }}
                         style={{
                           ...styles.saveDateButton,
-                          background: pendingStatus === "free" ? "#22c55e" : "#3b82f6"
+                          background: pendingStatus === "pilot" ? "#a855f7" : 
+                                     pendingStatus === "free" ? "#22c55e" : 
+                                     pendingStatus === "standard" ? "#3b82f6" : 
+                                     pendingStatus === "premium" ? "#f59e0b" : "#3b82f6"
                         }}
                       >
-                        Lagre som {pendingStatus === "free" ? "Gratis" : "Standard"}
+                        Lagre som {pendingStatus === "pilot" ? "Pilotkunde" : 
+                                  pendingStatus === "free" ? "Gratis" : 
+                                  pendingStatus === "standard" ? "Standard" : 
+                                  pendingStatus === "premium" ? "Premium" : pendingStatus}
                       </button>
                       <button
                         onClick={() => {
@@ -512,7 +558,7 @@ export default function AdminDashboard() {
                       <button
                         onClick={() => {
                           setEditingOrg(org.id);
-                          setPendingStatus(status as "free" | "standard");
+                          setPendingStatus(status);
                         }}
                         style={styles.editDateButton}
                       >
@@ -811,6 +857,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#9ca3af",
     borderColor: "#6b7280",
   },
+  statusButtonActivePilot: {
+    background: "rgba(168, 85, 247, 0.15)",
+    color: "#a855f7",
+    borderColor: "#a855f7",
+  },
   statusButtonActiveFree: {
     background: "rgba(34, 197, 94, 0.15)",
     color: "#22c55e",
@@ -820,6 +871,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "rgba(59, 130, 246, 0.15)",
     color: "#3b82f6",
     borderColor: "#3b82f6",
+  },
+  statusButtonActivePremium: {
+    background: "rgba(245, 158, 11, 0.15)",
+    color: "#f59e0b",
+    borderColor: "#f59e0b",
   },
   datePickerRow: {
     display: "flex",

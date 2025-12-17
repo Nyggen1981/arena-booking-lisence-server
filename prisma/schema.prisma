@@ -21,8 +21,8 @@ model Organization {
   // Lisensnøkkel (genereres automatisk, deles med kunden)
   licenseKey    String   @unique @default(cuid())
   
-  // Lisenstype: "free", "trial", "standard", "premium"
-  licenseType   String   @default("trial")
+  // Lisenstype: "inactive", "pilot", "free", "standard", "premium"
+  licenseType   String   @default("inactive")
   
   // Datoer
   createdAt     DateTime @default(now())
