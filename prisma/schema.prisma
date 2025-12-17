@@ -86,4 +86,9 @@ model AdminUser {
   role      String   @default("admin")          // "super", "admin", "viewer"
   createdAt DateTime @default(now())
   lastLogin DateTime?
+  
+  // 2FA (TOTP med Google Authenticator)
+  totpSecret    String?                         // Base32-encoded secret
+  totpEnabled   Boolean  @default(false)        // Om 2FA er aktivert
+  totpVerified  Boolean  @default(false)        // Om bruker har verifisert oppsett
 }
