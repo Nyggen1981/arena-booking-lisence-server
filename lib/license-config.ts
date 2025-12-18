@@ -24,7 +24,7 @@ export const LICENSE_TYPES = {
     price: 0  // Gratis for pilotkunder
   },
   free: {
-    name: "Gratis",
+    name: "Prøveperiode",
     maxUsers: 10,
     maxResources: 2,
     gracePeriodDays: 0,

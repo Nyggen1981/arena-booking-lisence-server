@@ -239,7 +239,7 @@ export default function AdminDashboard() {
     
     const statusNames: Record<string, string> = {
       pilot: "Pilotkunde",
-      free: "Gratis",
+      free: "Prøveperiode",
       standard: "Standard",
       premium: "Premium"
     };
@@ -479,7 +479,7 @@ export default function AdminDashboard() {
                         borderColor: status === "free" ? "#22c55e" : "#333"
                       }}
                     >
-                      Gratis
+                      Prøveperiode
                     </button>
                     <button
                       onClick={() => {
@@ -536,7 +536,7 @@ export default function AdminDashboard() {
                         }}
                       >
                         Lagre som {pendingStatus === "pilot" ? "Pilotkunde" : 
-                                  pendingStatus === "free" ? "Gratis" : 
+                                  pendingStatus === "free" ? "Prøveperiode" : 
                                   pendingStatus === "standard" ? "Standard" : 
                                   pendingStatus === "premium" ? "Premium" : pendingStatus}
                       </button>
