@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Kunder/Organisasjoner som bruker Arena Booking
+// Kunder/Organisasjoner som bruker SportFlow Booking
 model Organization {
   id            String   @id @default(cuid())
   

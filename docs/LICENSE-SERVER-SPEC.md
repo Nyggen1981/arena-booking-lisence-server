@@ -1,13 +1,13 @@
-# Arena License Server - Spesifikasjon
+# SportFlow License Server - Spesifikasjon
 
-Dette dokumentet beskriver hvordan lisensserveren skal settes opp og kommunisere med Arena Booking-apper.
+Dette dokumentet beskriver hvordan lisensserveren skal settes opp og kommunisere med SportFlow Booking-apper.
 
 ---
 
 ## 🔗 Kommunikasjon mellom prosjektene
 
 ```
-ARENA BOOKING APP                         LICENSE SERVER
+SPORTFLOW BOOKING APP                     LICENSE SERVER
 (Kundeinstallasjon)                       (Din sentrale server)
 
 .env:                                     .env:
@@ -48,7 +48,7 @@ LICENSE_KEY=clxxxxxxxxxxxxxxxxx           NEXTAUTH_SECRET=...
 
 ### POST `/api/license/validate`
 
-**Request fra Arena Booking:**
+**Request fra SportFlow Booking:**
 ```json
 {
   "licenseKey": "clxxxxxxxxxxxxxxxxxxxx",
@@ -143,7 +143,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Kunder/Organisasjoner som bruker Arena Booking
+// Kunder/Organisasjoner som bruker SportFlow Booking
 model Organization {
   id            String   @id @default(cuid())
   
@@ -306,26 +306,26 @@ export function getLicenseLimits(licenseType: LicenseType, org?: { maxUsers?: nu
 # .env for lisensserver
 
 # Database (Neon/Supabase PostgreSQL)
-DATABASE_URL="postgresql://user:password@host:5432/arena_licenses?sslmode=require"
+DATABASE_URL="postgresql://user:password@host:5432/sportflow_licenses?sslmode=require"
 
 # NextAuth
 NEXTAUTH_SECRET="generer-en-lang-tilfeldig-streng"
-NEXTAUTH_URL="https://license.arena-booking.no"
+NEXTAUTH_URL="https://license.sportflow-booking.no"
 
 # Første admin-bruker (brukes av seed-script)
-ADMIN_EMAIL="admin@arena-booking.no"
+ADMIN_EMAIL="admin@sportflow-booking.no"
 ADMIN_PASSWORD="veldig-sikkert-passord"
 ```
 
 ---
 
-## 🔐 Miljøvariabler for Arena Booking (hver kunde)
+## 🔐 Miljøvariabler for SportFlow Booking (hver kunde)
 
 Når en kunde er registrert i lisensserveren, må de legge til dette i sin `.env`:
 
 ```env
 # Lisensserver
-LICENSE_SERVER_URL="https://license.arena-booking.no"
+LICENSE_SERVER_URL="https://license.sportflow-booking.no"
 LICENSE_KEY="clxxxxxxxxxxxx"  # Generert av lisensserveren
 ```
 
@@ -431,7 +431,7 @@ main()
 
 7. **Deploy til Vercel**
 
-### I Arena Booking-prosjektet (senere):
+### I SportFlow Booking-prosjektet (senere):
 
 1. Legg til i `.env`:
    ```env
@@ -453,7 +453,7 @@ main()
 - [ ] Kan se kundeliste
 - [ ] Kan legge til ny kunde
 - [ ] Deploy til Vercel
-- [ ] Test med Arena Booking
+- [ ] Test med SportFlow Booking
 
 
 

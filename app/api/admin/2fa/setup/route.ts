@@ -41,7 +41,7 @@ export async function GET() {
   }
   
   // Generer QR-kode URL
-  const serviceName = "Arena License Server";
+  const serviceName = "SportFlow License Server";
   const otpauth = authenticator.keyuri(email, serviceName, secret);
   
   // Generer QR-kode som data URL

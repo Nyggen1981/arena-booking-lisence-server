@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     // Opprett standard admin-bruker første gang
     admin = await prisma.adminUser.create({
       data: {
-        email: "admin@arena-license.local",
+        email: "admin@sportflow-license.local",
         password: "", // Ikke brukt - vi bruker env-passord
         name: "Administrator",
         role: "super",

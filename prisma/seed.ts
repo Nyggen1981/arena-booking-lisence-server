@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.ADMIN_EMAIL || "admin@arena-booking.no";
+  const email = process.env.ADMIN_EMAIL || "admin@sportflow-booking.no";
   const password = process.env.ADMIN_PASSWORD || "admin123";
 
   console.log("Seeding database...");

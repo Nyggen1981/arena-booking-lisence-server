@@ -145,7 +145,7 @@ export default function AdminLoginPage() {
             fontWeight: "600",
           }}
         >
-          Arena License Admin
+          SportFlow License Admin
         </h1>
 
         {/* Steg-indikator */}
