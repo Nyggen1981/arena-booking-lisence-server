@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LICENSE_TYPES, calculateMonthlyPrice, getLicensePrice, LicenseType } from "@/lib/license-config";
 
 type Organization = {
   id: string;
@@ -578,6 +579,40 @@ export default function AdminDashboard() {
                     </button>
                   </div>
 
+                  {/* Pricing Summary */}
+                  <div style={styles.pricingSection}>
+                    <h4 style={styles.pricingTitle}>Prisoversikt</h4>
+                    <div style={styles.pricingBreakdown}>
+                      <div style={styles.pricingRow}>
+                        <span style={styles.pricingLabel}>
+                          {LICENSE_TYPES[org.licenseType as LicenseType]?.name || org.licenseType}:
+                        </span>
+                        <span style={styles.pricingValue}>
+                          {getLicensePrice(org.licenseType as LicenseType)} kr/mnd
+                        </span>
+                      </div>
+                      {orgModules[org.id]?.filter(om => om.isActive && om.module.price !== null).map(orgModule => (
+                        <div key={orgModule.id} style={styles.pricingRow}>
+                          <span style={styles.pricingLabel}>
+                            {orgModule.module.name}:
+                          </span>
+                          <span style={styles.pricingValue}>
+                            {orgModule.module.price ?? 0} kr/mnd
+                          </span>
+                        </div>
+                      ))}
+                      <div style={styles.pricingTotal}>
+                        <span style={styles.pricingTotalLabel}>Totalt per måned:</span>
+                        <span style={styles.pricingTotalValue}>
+                          {calculateMonthlyPrice(
+                            org.licenseType as LicenseType,
+                            orgModules[org.id]?.filter(om => om.isActive) || []
+                          )} kr/mnd
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Modules Section */}
                   <div style={styles.modulesSection}>
                     <h4 style={styles.modulesTitle}>Moduler</h4>
@@ -957,6 +992,55 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontSize: "0.8rem",
     whiteSpace: "nowrap",
+  },
+  pricingSection: {
+    marginTop: "1rem",
+    padding: "1rem",
+    background: "rgba(34, 197, 94, 0.05)",
+    borderRadius: "8px",
+    border: "1px solid rgba(34, 197, 94, 0.2)",
+  },
+  pricingTitle: {
+    fontSize: "0.9rem",
+    fontWeight: "600",
+    margin: "0 0 0.75rem 0",
+    color: "#22c55e",
+  },
+  pricingBreakdown: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+  },
+  pricingRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: "0.85rem",
+  },
+  pricingLabel: {
+    color: "#a3a3a3",
+  },
+  pricingValue: {
+    color: "#fff",
+    fontWeight: "500",
+  },
+  pricingTotal: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: "0.5rem",
+    paddingTop: "0.75rem",
+    borderTop: "1px solid rgba(34, 197, 94, 0.2)",
+  },
+  pricingTotalLabel: {
+    color: "#22c55e",
+    fontWeight: "600",
+    fontSize: "0.95rem",
+  },
+  pricingTotalValue: {
+    color: "#22c55e",
+    fontWeight: "700",
+    fontSize: "1.1rem",
   },
   modulesSection: {
     marginTop: "1rem",

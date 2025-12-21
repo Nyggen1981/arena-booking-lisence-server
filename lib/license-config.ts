@@ -103,6 +103,32 @@ export function buildModulesObject(activeModules: Array<{ module: { key: string 
   return modules;
 }
 
+// Hjelpefunksjon for å få pris for lisens-type
+export function getLicensePrice(licenseType: LicenseType): number {
+  return LICENSE_TYPES[licenseType].price;
+}
+
+// Beregn total månedspris for en organisasjon
+export function calculateMonthlyPrice(
+  licenseType: LicenseType,
+  activeModules: Array<{ module: { price: number | null } }> | undefined
+): number {
+  // Base-pris fra lisens-type
+  const basePrice = getLicensePrice(licenseType);
+  
+  if (!activeModules || activeModules.length === 0) {
+    return basePrice;
+  }
+  
+  // Legg til pris for aktive moduler (kun moduler med pris)
+  const modulePrice = activeModules.reduce((sum, orgModule) => {
+    const price = orgModule.module.price;
+    return sum + (price ?? 0);
+  }, 0);
+  
+  return basePrice + modulePrice;
+}
+
 
 
 

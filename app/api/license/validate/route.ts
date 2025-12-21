@@ -9,7 +9,9 @@ import {
   getDaysUntilExpiry,
   isInGracePeriod,
   getGraceDaysLeft,
-  buildModulesObject
+  buildModulesObject,
+  calculateMonthlyPrice,
+  getLicensePrice
 } from "@/lib/license-config";
 
 type ValidateBody = {
@@ -154,14 +156,24 @@ export async function POST(request: Request) {
 
   if (status === "grace") {
     const modules = buildModulesObject(org.modules);
+    const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules);
+    const basePrice = getLicensePrice(licenseType);
+    
     return NextResponse.json({
       valid: true,
       status: "grace",
       organization: org.name,
+      licenseType: org.licenseType,
+      licenseTypeName: LICENSE_TYPES[licenseType]?.name || org.licenseType,
       graceMode: true,
       daysLeft: getGraceDaysLeft(graceEndsAt),
       message,
       modules,
+      pricing: {
+        basePrice,
+        totalMonthlyPrice,
+        moduleCount: org.modules.length
+      },
       restrictions: {
         readOnly: false,
         showWarning: true,
@@ -175,12 +187,15 @@ export async function POST(request: Request) {
   const daysUntilExpiry = getDaysUntilExpiry(org.expiresAt);
   const showRenewalWarning = daysUntilExpiry <= 30;
   const modules = buildModulesObject(org.modules);
+  const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules);
+  const basePrice = getLicensePrice(licenseType);
 
   return NextResponse.json({
     valid: true,
     status: "active",
     organization: org.name,
     licenseType: org.licenseType,
+    licenseTypeName: LICENSE_TYPES[licenseType]?.name || org.licenseType,
     expiresAt: org.expiresAt.toISOString(),
     daysUntilExpiry,
     limits: {
@@ -189,6 +204,11 @@ export async function POST(request: Request) {
     },
     features,
     modules,
+    pricing: {
+      basePrice,
+      totalMonthlyPrice,
+      moduleCount: org.modules.length
+    },
     showRenewalWarning
   });
 }
