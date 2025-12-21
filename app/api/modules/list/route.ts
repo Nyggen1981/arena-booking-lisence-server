@@ -14,6 +14,9 @@ export async function GET(request: Request) {
 
   try {
     const modules = await prisma.module.findMany({
+      where: {
+        key: { not: "booking" } // Booking er ikke lenger en modul
+      },
       orderBy: [
         { isStandard: "desc" },
         { name: "asc" }

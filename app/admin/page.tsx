@@ -563,7 +563,9 @@ export default function AdminDashboard() {
             <div style={styles.pricingAdminSection}>
               <h3 style={styles.pricingSectionTitle}>Moduler</h3>
               <div style={styles.pricingList}>
-                {modules.map(module => {
+                {modules
+                  .filter(module => module.key !== "booking") // Fjern booking fra listen
+                  .map(module => {
                   const isEditing = editingPrice?.type === "module" && editingPrice.id === module.id;
 
                   return (
@@ -877,7 +879,9 @@ export default function AdminDashboard() {
                       Booking er alltid inkludert (unntatt inaktiv lisens)
                     </p>
                     <div style={styles.modulesList}>
-                      {modules.map(module => {
+                      {modules
+                        .filter(module => module.key !== "booking") // Fjern booking fra listen
+                        .map(module => {
                           const orgModule = orgModules[org.id]?.find(om => om.moduleId === module.id);
                           const isActive = orgModule?.isActive ?? module.isStandard;
                           const isLoading = loadingModules[`${org.id}-${module.id}`] ?? false;
@@ -927,8 +931,8 @@ export default function AdminDashboard() {
                             </div>
                           );
                         })}
-                      {modules.length === 0 && (
-                        <p style={styles.noModules}>Ingen moduler tilgjengelig</p>
+                      {modules.filter(m => m.key !== "booking").length === 0 && (
+                        <p style={styles.noModules}>Ingen tilleggsmoduler tilgjengelig</p>
                       )}
                     </div>
                   </div>
