@@ -67,6 +67,7 @@ LICENSE_KEY=clxxxxxxxxxxxxxxxxx           NEXTAUTH_SECRET=...
   "status": "active",
   "organization": "Haugesund IL",
   "licenseType": "standard",
+  "licenseTypeName": "Standard",
   "expiresAt": "2025-12-31T23:59:59.000Z",
   "daysUntilExpiry": 380,
   "limits": {
@@ -78,6 +79,15 @@ LICENSE_KEY=clxxxxxxxxxxxxxxxxx           NEXTAUTH_SECRET=...
     "customBranding": true,
     "prioritySupport": false
   },
+  "modules": {
+    "booking": true,        // Alltid true (unntatt inaktiv)
+    "pricing": true         // Hvis aktivert
+  },
+  "pricing": {
+    "basePrice": 299,       // Pris for lisens-type
+    "totalMonthlyPrice": 398, // Total (base + moduler)
+    "moduleCount": 1        // Antall aktive moduler
+  },
   "showRenewalWarning": false
 }
 ```
@@ -88,9 +98,20 @@ LICENSE_KEY=clxxxxxxxxxxxxxxxxx           NEXTAUTH_SECRET=...
   "valid": true,
   "status": "grace",
   "organization": "Haugesund IL",
+  "licenseType": "standard",
+  "licenseTypeName": "Standard",
   "graceMode": true,
   "daysLeft": 7,
   "message": "Abonnementet har utløpt. 7 dager igjen av grace period.",
+  "modules": {
+    "booking": true,
+    "pricing": true
+  },
+  "pricing": {
+    "basePrice": 299,
+    "totalMonthlyPrice": 398,
+    "moduleCount": 1
+  },
   "restrictions": {
     "readOnly": false,
     "showWarning": true,
@@ -126,6 +147,48 @@ LICENSE_KEY=clxxxxxxxxxxxxxxxxx           NEXTAUTH_SECRET=...
   "error": "Invalid license key"
 }
 ```
+
+---
+
+## 💰 Nytt: Prising og Moduler
+
+### GET `/api/license/pricing?licenseKey=xxx`
+
+Henter detaljert prisinformasjon for en organisasjon.
+
+**Response:**
+```json
+{
+  "licenseKey": "clxxxxxxxxxxxx",
+  "organization": "Haugesund IL",
+  "pricing": {
+    "licenseType": "standard",
+    "licenseTypeName": "Standard",
+    "basePrice": 299,
+    "modules": [
+      {
+        "key": "booking",
+        "name": "Booking",
+        "price": 0,
+        "isStandard": true
+      },
+      {
+        "key": "pricing",
+        "name": "Pris & Betaling",
+        "price": 99,
+        "isStandard": false
+      }
+    ],
+    "modulePrice": 99,
+    "totalMonthlyPrice": 398
+  }
+}
+```
+
+### Moduler
+
+- **Booking:** Kjernefunksjonalitet, alltid inkludert (unntatt inaktiv lisens). Ikke en modul.
+- **Tilleggsmoduler:** Kan aktiveres/deaktiveres per organisasjon (f.eks. "Pris & Betaling")
 
 ---
 
