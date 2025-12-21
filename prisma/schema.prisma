@@ -21,7 +21,7 @@ model Organization {
   // Lisensnøkkel (genereres automatisk, deles med kunden)
   licenseKey    String   @unique @default(cuid())
   
-  // Lisenstype: "inactive", "pilot", "free", "standard", "premium"
+  // Lisenstype: "inactive", "pilot", "free", "standard"
   licenseType   String   @default("inactive")
   
   // Datoer
@@ -50,6 +50,7 @@ model Organization {
   
   // Relasjoner
   validations   LicenseValidation[]
+  modules       OrganizationModule[]
   
   @@index([licenseKey])
   @@index([isActive, expiresAt])
@@ -91,4 +92,41 @@ model AdminUser {
   totpSecret    String?                         // Base32-encoded secret
   totpEnabled   Boolean  @default(false)        // Om 2FA er aktivert
   totpVerified  Boolean  @default(false)        // Om bruker har verifisert oppsett
+}
+
+// Moduler/funksjonaliteter som kan aktiveres for organisasjoner
+model Module {
+  id          String   @id @default(cuid())
+  key         String   @unique                  // "booking", "pricing", "analytics", etc.
+  name        String                            // "Booking", "Pris & Betaling", etc.
+  description String?
+  isStandard  Boolean  @default(false)          // Om modulen er standard (alltid inkludert)
+  isActive    Boolean  @default(true)           // Om modulen er tilgjengelig for salg
+  price       Int?                              // Månedspris for modulen (null = gratis/inkludert)
+  
+  // Relasjoner
+  organizations OrganizationModule[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([key])
+  @@index([isStandard])
+}
+
+// Relasjon mellom organisasjoner og moduler (many-to-many)
+model OrganizationModule {
+  id             String   @id @default(cuid())
+  organizationId String
+  moduleId       String
+  isActive       Boolean  @default(true)
+  activatedAt    DateTime @default(now())
+  expiresAt      DateTime?                      // Hvis modulen har egen utløpsdato (f.eks. for trial)
+  
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  module         Module       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
+  @@unique([organizationId, moduleId])
+  @@index([organizationId])
+  @@index([moduleId])
 }

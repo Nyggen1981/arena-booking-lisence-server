@@ -46,18 +46,6 @@ export const LICENSE_TYPES = {
       prioritySupport: false
     },
     price: 299  // kr/mnd
-  },
-  premium: {
-    name: "Premium",
-    maxUsers: null,      // Ubegrenset
-    maxResources: null,  // Ubegrenset
-    gracePeriodDays: 30,
-    features: {
-      emailNotifications: true,
-      customBranding: true,
-      prioritySupport: true
-    },
-    price: 599  // kr/mnd
   }
 } as const;
 
@@ -104,6 +92,15 @@ export function getGraceDaysLeft(graceEndsAt: Date | null): number {
   const now = new Date();
   const diffTime = graceEndsAt.getTime() - now.getTime();
   return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+}
+
+// Hjelpefunksjon for å bygge modul-objekt fra aktivere moduler
+export function buildModulesObject(activeModules: Array<{ module: { key: string } }>): Record<string, boolean> {
+  const modules: Record<string, boolean> = {};
+  activeModules.forEach(({ module }) => {
+    modules[module.key] = true;
+  });
+  return modules;
 }
 
 

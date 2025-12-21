@@ -8,7 +8,8 @@ import {
   getGracePeriodDays,
   getDaysUntilExpiry,
   isInGracePeriod,
-  getGraceDaysLeft
+  getGraceDaysLeft,
+  buildModulesObject
 } from "@/lib/license-config";
 
 type ValidateBody = {
@@ -48,9 +49,17 @@ export async function POST(request: Request) {
     );
   }
 
-  // Finn organisasjonen basert på lisensnøkkel
+  // Finn organisasjonen basert på lisensnøkkel (inkluder aktive moduler)
   const org = await prisma.organization.findUnique({
-    where: { licenseKey }
+    where: { licenseKey },
+    include: {
+      modules: {
+        where: { isActive: true },
+        include: {
+          module: true
+        }
+      }
+    }
   });
 
   // Ugyldig lisensnøkkel
@@ -144,6 +153,7 @@ export async function POST(request: Request) {
   }
 
   if (status === "grace") {
+    const modules = buildModulesObject(org.modules);
     return NextResponse.json({
       valid: true,
       status: "grace",
@@ -151,6 +161,7 @@ export async function POST(request: Request) {
       graceMode: true,
       daysLeft: getGraceDaysLeft(graceEndsAt),
       message,
+      modules,
       restrictions: {
         readOnly: false,
         showWarning: true,
@@ -163,6 +174,7 @@ export async function POST(request: Request) {
   // Aktiv lisens
   const daysUntilExpiry = getDaysUntilExpiry(org.expiresAt);
   const showRenewalWarning = daysUntilExpiry <= 30;
+  const modules = buildModulesObject(org.modules);
 
   return NextResponse.json({
     valid: true,
@@ -176,6 +188,7 @@ export async function POST(request: Request) {
       maxResources: limits.maxResources
     },
     features,
+    modules,
     showRenewalWarning
   });
 }

@@ -62,6 +62,71 @@ async function main() {
   console.log("   License Key:", haugesundOrg.licenseKey);
   console.log("   Expires:", haugesundOrg.expiresAt.toISOString());
 
+  // Opprett moduler
+  const bookingModule = await prisma.module.upsert({
+    where: { key: "booking" },
+    update: {},
+    create: {
+      key: "booking",
+      name: "Booking",
+      description: "Grunnleggende booking-funksjonalitet",
+      isStandard: true,
+      isActive: true,
+      price: null // Inkludert i base-prisen
+    }
+  });
+
+  console.log("✅ Booking module created:", bookingModule.name);
+
+  const pricingModule = await prisma.module.upsert({
+    where: { key: "pricing" },
+    update: {},
+    create: {
+      key: "pricing",
+      name: "Pris & Betaling",
+      description: "Pris og betalingshåndtering for bookingene",
+      isStandard: false,
+      isActive: true,
+      price: 99 // kr/mnd ekstra
+    }
+  });
+
+  console.log("✅ Pricing module created:", pricingModule.name);
+
+  // Aktiver booking-modul for test-organisasjonen (standard modul)
+  await prisma.organizationModule.upsert({
+    where: {
+      organizationId_moduleId: {
+        organizationId: testOrg.id,
+        moduleId: bookingModule.id
+      }
+    },
+    update: {},
+    create: {
+      organizationId: testOrg.id,
+      moduleId: bookingModule.id,
+      isActive: true
+    }
+  });
+
+  // Aktiver booking-modul for Haugesund IL
+  await prisma.organizationModule.upsert({
+    where: {
+      organizationId_moduleId: {
+        organizationId: haugesundOrg.id,
+        moduleId: bookingModule.id
+      }
+    },
+    update: {},
+    create: {
+      organizationId: haugesundOrg.id,
+      moduleId: bookingModule.id,
+      isActive: true
+    }
+  });
+
+  console.log("✅ Modules activated for organizations");
+
   console.log("\n🎉 Seed completed successfully!");
 }
 
