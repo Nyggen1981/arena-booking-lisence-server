@@ -104,17 +104,19 @@ export function buildModulesObject(activeModules: Array<{ module: { key: string 
 }
 
 // Hjelpefunksjon for å få pris for lisens-type
-export function getLicensePrice(licenseType: LicenseType): number {
-  return LICENSE_TYPES[licenseType].price;
+// Denne funksjonen kan ta en pris-override fra databasen
+export function getLicensePrice(licenseType: LicenseType, overridePrice?: number | null): number {
+  return overridePrice ?? LICENSE_TYPES[licenseType].price;
 }
 
 // Beregn total månedspris for en organisasjon
 export function calculateMonthlyPrice(
   licenseType: LicenseType,
-  activeModules: Array<{ module: { price: number | null } }> | undefined
+  activeModules: Array<{ module: { price: number | null } }> | undefined,
+  basePriceOverride?: number
 ): number {
-  // Base-pris fra lisens-type
-  const basePrice = getLicensePrice(licenseType);
+  // Base-pris fra lisens-type (eller override)
+  const basePrice = basePriceOverride ?? getLicensePrice(licenseType);
   
   if (!activeModules || activeModules.length === 0) {
     return basePrice;

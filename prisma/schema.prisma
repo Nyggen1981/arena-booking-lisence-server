@@ -130,3 +130,14 @@ model OrganizationModule {
   @@index([organizationId])
   @@index([moduleId])
 }
+
+// Priser for lisens-typer (overstyrer default fra license-config.ts)
+model LicenseTypePrice {
+  id          String   @id @default(cuid())
+  licenseType String   @unique                  // "inactive", "pilot", "free", "standard"
+  price       Int                               // Månedspris i kr
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([licenseType])
+}

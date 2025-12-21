@@ -89,6 +89,11 @@ export async function POST(request: Request) {
   const limits = getLicenseLimits(licenseType, org);
   const features = getLicenseFeatures(licenseType);
   const gracePeriodDays = getGracePeriodDays(licenseType);
+  
+  // Hent pris-override fra databasen hvis den finnes
+  const licenseTypePrice = await prisma.licenseTypePrice.findUnique({
+    where: { licenseType: org.licenseType }
+  });
 
   // Beregn grace end date hvis ikke satt
   let graceEndsAt = org.graceEndsAt;
@@ -156,8 +161,8 @@ export async function POST(request: Request) {
 
   if (status === "grace") {
     const modules = buildModulesObject(org.modules);
-    const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules);
-    const basePrice = getLicensePrice(licenseType);
+    const basePrice = getLicensePrice(licenseType, licenseTypePrice?.price);
+    const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules, basePrice);
     
     return NextResponse.json({
       valid: true,
@@ -187,8 +192,8 @@ export async function POST(request: Request) {
   const daysUntilExpiry = getDaysUntilExpiry(org.expiresAt);
   const showRenewalWarning = daysUntilExpiry <= 30;
   const modules = buildModulesObject(org.modules);
-  const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules);
-  const basePrice = getLicensePrice(licenseType);
+  const basePrice = getLicensePrice(licenseType, licenseTypePrice?.price);
+  const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules, basePrice);
 
   return NextResponse.json({
     valid: true,

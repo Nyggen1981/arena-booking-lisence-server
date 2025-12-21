@@ -35,12 +35,18 @@ export async function GET(request: Request) {
     }
 
     const licenseType = org.licenseType as LicenseType;
-    const basePrice = getLicensePrice(licenseType);
+    
+    // Hent pris-override fra databasen hvis den finnes
+    const licenseTypePrice = await prisma.licenseTypePrice.findUnique({
+      where: { licenseType: org.licenseType }
+    });
+    
+    const basePrice = getLicensePrice(licenseType, licenseTypePrice?.price);
     const modulePrice = org.modules.reduce((sum, orgModule) => {
       const price = orgModule.module.price;
       return sum + (price ?? 0);
     }, 0);
-    const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules);
+    const totalMonthlyPrice = calculateMonthlyPrice(licenseType, org.modules, basePrice);
 
     // Bygg detaljert prisoversikt
     const pricingBreakdown = {
