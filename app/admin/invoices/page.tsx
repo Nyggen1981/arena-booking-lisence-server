@@ -1807,8 +1807,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   invLogoSection: {},
   invLogo: {
-    maxWidth: "400px",
-    maxHeight: "150px",
+    maxWidth: "220px",
+    maxHeight: "80px",
     objectFit: "contain",
   },
   invLogoPlaceholder: {
