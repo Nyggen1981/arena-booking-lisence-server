@@ -692,16 +692,18 @@ export default function InvoicesPage() {
                         <button
                           onClick={() => updateInvoiceStatus(invoice.id, "sent")}
                           style={styles.actionButton}
+                          title="Marker fakturaen som sendt (send PDF manuelt)"
                         >
-                          Send
+                          📤 Sendt
                         </button>
                       )}
                       {(invoice.status === "sent" || invoice.status === "overdue") && (
                         <button
                           onClick={() => updateInvoiceStatus(invoice.id, "paid", new Date().toISOString())}
                           style={{ ...styles.actionButton, background: "#22c55e" }}
+                          title="Marker fakturaen som betalt"
                         >
-                          Betalt
+                          ✓ Betalt
                         </button>
                       )}
                       {invoice.status !== "cancelled" && invoice.status !== "paid" && (
