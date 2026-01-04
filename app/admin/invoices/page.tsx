@@ -86,6 +86,8 @@ export default function InvoicesPage() {
   
   const [editingSettings, setEditingSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState<Partial<CompanySettings>>({});
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -238,6 +240,59 @@ export default function InvoicesPage() {
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setError("Kunne ikke lagre innstillinger");
+      }
+    } catch (err) {
+      setError("Nettverksfeil");
+    }
+  };
+
+  const uploadLogo = async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("logo", file);
+
+      const response = await fetch("/api/settings/logo", {
+        method: "POST",
+        headers: {
+          "x-admin-secret": password
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCompanySettings(prev => prev ? { ...prev, logoUrl: data.logoUrl } : null);
+        setSettingsForm(prev => ({ ...prev, logoUrl: data.logoUrl }));
+        setSuccess("Logo lastet opp");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await response.json();
+        setError(data.error || "Kunne ikke laste opp logo");
+      }
+    } catch (err) {
+      setError("Nettverksfeil");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const deleteLogo = async () => {
+    try {
+      const response = await fetch("/api/settings/logo", {
+        method: "DELETE",
+        headers: {
+          "x-admin-secret": password
+        }
+      });
+
+      if (response.ok) {
+        setCompanySettings(prev => prev ? { ...prev, logoUrl: null } : null);
+        setSettingsForm(prev => ({ ...prev, logoUrl: null }));
+        setSuccess("Logo fjernet");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        setError("Kunne ikke fjerne logo");
       }
     } catch (err) {
       setError("Nettverksfeil");
@@ -598,6 +653,12 @@ export default function InvoicesPage() {
                       </span>
                     </span>
                     <span style={styles.colActions}>
+                      <button
+                        onClick={() => setPreviewInvoice(invoice)}
+                        style={{ ...styles.actionButton, background: "#6366f1" }}
+                      >
+                        👁 Vis
+                      </button>
                       {invoice.status === "draft" && (
                         <button
                           onClick={() => updateInvoiceStatus(invoice.id, "sent")}
@@ -801,14 +862,42 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Logo URL</label>
-                    <input
-                      type="text"
-                      value={settingsForm.logoUrl || ""}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, logoUrl: e.target.value })}
-                      style={styles.input}
-                      placeholder="https://example.com/logo.png"
-                    />
+                    <label style={styles.label}>Logo</label>
+                    <div style={styles.logoUploadSection}>
+                      {settingsForm.logoUrl && (
+                        <div style={styles.logoPreview}>
+                          <img 
+                            src={settingsForm.logoUrl} 
+                            alt="Logo" 
+                            style={styles.logoImage}
+                          />
+                          <button
+                            onClick={deleteLogo}
+                            style={styles.deleteLogoButton}
+                            type="button"
+                          >
+                            ✕ Fjern
+                          </button>
+                        </div>
+                      )}
+                      <div style={styles.uploadArea}>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) uploadLogo(file);
+                          }}
+                          style={styles.fileInput}
+                          id="logo-upload"
+                          disabled={uploadingLogo}
+                        />
+                        <label htmlFor="logo-upload" style={styles.uploadLabel}>
+                          {uploadingLogo ? "Laster opp..." : "📤 Last opp logo"}
+                        </label>
+                        <p style={styles.uploadHint}>PNG, JPEG, SVG eller WebP. Maks 2MB.</p>
+                      </div>
+                    </div>
                   </div>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Notat på fakturaer</label>
@@ -914,6 +1003,142 @@ export default function InvoicesPage() {
           </div>
         )}
       </div>
+
+      {/* Faktura forhåndsvisning modal */}
+      {previewInvoice && companySettings && (
+        <div style={styles.modalOverlay} onClick={() => setPreviewInvoice(null)}>
+          <div style={styles.previewModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.previewHeader}>
+              <h2 style={styles.previewTitle}>Forhåndsvisning av faktura</h2>
+              <button onClick={() => setPreviewInvoice(null)} style={styles.closeButton}>×</button>
+            </div>
+            
+            <div style={styles.invoicePreview}>
+              {/* Faktura-dokument */}
+              <div style={styles.invoiceDocument}>
+                {/* Header med logo og bedriftsinfo */}
+                <div style={styles.invoiceDocHeader}>
+                  <div style={styles.invoiceDocLogo}>
+                    {companySettings.logoUrl ? (
+                      <img src={companySettings.logoUrl} alt="Logo" style={styles.invoiceLogoImg} />
+                    ) : (
+                      <div style={styles.invoiceLogoPlaceholder}>LOGO</div>
+                    )}
+                  </div>
+                  <div style={styles.invoiceDocCompany}>
+                    <h1 style={styles.invoiceCompanyName}>{companySettings.companyName}</h1>
+                    {companySettings.address && <p style={styles.invoiceCompanyInfo}>{companySettings.address}</p>}
+                    {(companySettings.postalCode || companySettings.city) && (
+                      <p style={styles.invoiceCompanyInfo}>
+                        {companySettings.postalCode} {companySettings.city}
+                      </p>
+                    )}
+                    {companySettings.orgNumber && (
+                      <p style={styles.invoiceCompanyInfo}>Org.nr: {companySettings.orgNumber}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Faktura-tittel og info */}
+                <div style={styles.invoiceDocTitle}>
+                  <h2 style={styles.invoiceTitleText}>FAKTURA</h2>
+                  <div style={styles.invoiceMetaGrid}>
+                    <div>
+                      <p style={styles.invoiceMetaLabel}>Fakturanummer</p>
+                      <p style={styles.invoiceMetaValue}>{previewInvoice.invoiceNumber}</p>
+                    </div>
+                    <div>
+                      <p style={styles.invoiceMetaLabel}>Fakturadato</p>
+                      <p style={styles.invoiceMetaValue}>{formatDate(previewInvoice.invoiceDate)}</p>
+                    </div>
+                    <div>
+                      <p style={styles.invoiceMetaLabel}>Forfallsdato</p>
+                      <p style={styles.invoiceMetaValue}>{formatDate(previewInvoice.dueDate)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Kunde-info */}
+                <div style={styles.invoiceDocCustomer}>
+                  <p style={styles.invoiceCustomerLabel}>Faktureres til:</p>
+                  <p style={styles.invoiceCustomerName}>{previewInvoice.organization.name}</p>
+                  <p style={styles.invoiceCustomerInfo}>{previewInvoice.organization.contactEmail}</p>
+                </div>
+
+                {/* Faktura-linjer */}
+                <div style={styles.invoiceDocLines}>
+                  <div style={styles.invoiceLineHeader}>
+                    <span style={styles.invoiceLineDesc}>Beskrivelse</span>
+                    <span style={styles.invoiceLineAmount}>Beløp</span>
+                  </div>
+                  
+                  <div style={styles.invoiceLine}>
+                    <span style={styles.invoiceLineDesc}>
+                      {previewInvoice.licenseTypeName} - {getMonthName(previewInvoice.periodMonth)} {previewInvoice.periodYear}
+                    </span>
+                    <span style={styles.invoiceLineAmount}>{previewInvoice.basePrice.toLocaleString()} kr</span>
+                  </div>
+
+                  {previewInvoice.modulePrice > 0 && (
+                    <div style={styles.invoiceLine}>
+                      <span style={styles.invoiceLineDesc}>Tilleggsmoduler</span>
+                      <span style={styles.invoiceLineAmount}>{previewInvoice.modulePrice.toLocaleString()} kr</span>
+                    </div>
+                  )}
+
+                  {previewInvoice.vatAmount > 0 && (
+                    <div style={styles.invoiceLine}>
+                      <span style={styles.invoiceLineDesc}>MVA ({companySettings.vatRate}%)</span>
+                      <span style={styles.invoiceLineAmount}>{previewInvoice.vatAmount.toLocaleString()} kr</span>
+                    </div>
+                  )}
+
+                  <div style={styles.invoiceLineTotal}>
+                    <span style={styles.invoiceLineTotalLabel}>Totalt</span>
+                    <span style={styles.invoiceLineTotalAmount}>{previewInvoice.amount.toLocaleString()} kr</span>
+                  </div>
+                </div>
+
+                {/* Betalingsinformasjon */}
+                <div style={styles.invoiceDocPayment}>
+                  <h3 style={styles.invoicePaymentTitle}>Betalingsinformasjon</h3>
+                  <div style={styles.invoicePaymentGrid}>
+                    {companySettings.bankAccount && (
+                      <div>
+                        <p style={styles.invoicePaymentLabel}>Kontonummer</p>
+                        <p style={styles.invoicePaymentValue}>{companySettings.bankAccount}</p>
+                      </div>
+                    )}
+                    {companySettings.bankName && (
+                      <div>
+                        <p style={styles.invoicePaymentLabel}>Bank</p>
+                        <p style={styles.invoicePaymentValue}>{companySettings.bankName}</p>
+                      </div>
+                    )}
+                  </div>
+                  {companySettings.paymentTerms && (
+                    <p style={styles.invoicePaymentTerms}>{companySettings.paymentTerms}</p>
+                  )}
+                </div>
+
+                {/* Notat */}
+                {companySettings.invoiceNote && (
+                  <div style={styles.invoiceDocNote}>
+                    <p style={styles.invoiceNoteText}>{companySettings.invoiceNote}</p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div style={styles.invoiceDocFooter}>
+                  {companySettings.email && <span>{companySettings.email}</span>}
+                  {companySettings.phone && <span>Tel: {companySettings.phone}</span>}
+                  {companySettings.website && <span>{companySettings.website}</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1346,6 +1571,288 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "0.9rem",
     margin: 0,
     color: "#fff",
+  },
+  // Logo upload styles
+  logoUploadSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
+  },
+  logoPreview: {
+    display: "flex",
+    alignItems: "center",
+    gap: "1rem",
+    padding: "1rem",
+    background: "#262626",
+    borderRadius: "8px",
+  },
+  logoImage: {
+    maxWidth: "150px",
+    maxHeight: "60px",
+    objectFit: "contain",
+  },
+  deleteLogoButton: {
+    padding: "0.5rem 1rem",
+    background: "#ef4444",
+    border: "none",
+    borderRadius: "6px",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+  },
+  uploadArea: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+  },
+  fileInput: {
+    display: "none",
+  },
+  uploadLabel: {
+    display: "inline-block",
+    padding: "0.75rem 1.5rem",
+    background: "#262626",
+    border: "1px dashed #404040",
+    borderRadius: "8px",
+    color: "#a3a3a3",
+    cursor: "pointer",
+    textAlign: "center",
+    fontSize: "0.9rem",
+  },
+  uploadHint: {
+    fontSize: "0.75rem",
+    color: "#737373",
+    margin: 0,
+  },
+  // Modal and preview styles
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0, 0, 0, 0.8)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    padding: "2rem",
+  },
+  previewModal: {
+    background: "#171717",
+    borderRadius: "12px",
+    maxWidth: "800px",
+    width: "100%",
+    maxHeight: "90vh",
+    overflow: "auto",
+    border: "1px solid #262626",
+  },
+  previewHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "1rem 1.5rem",
+    borderBottom: "1px solid #262626",
+  },
+  previewTitle: {
+    fontSize: "1.1rem",
+    fontWeight: "600",
+    margin: 0,
+  },
+  invoicePreview: {
+    padding: "1.5rem",
+  },
+  invoiceDocument: {
+    background: "#fff",
+    color: "#1a1a1a",
+    padding: "2.5rem",
+    borderRadius: "8px",
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  },
+  invoiceDocHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "2rem",
+    paddingBottom: "1.5rem",
+    borderBottom: "2px solid #e5e5e5",
+  },
+  invoiceDocLogo: {},
+  invoiceLogoImg: {
+    maxWidth: "180px",
+    maxHeight: "70px",
+    objectFit: "contain",
+  },
+  invoiceLogoPlaceholder: {
+    width: "120px",
+    height: "50px",
+    background: "#f3f4f6",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#9ca3af",
+    fontSize: "0.9rem",
+    borderRadius: "4px",
+  },
+  invoiceDocCompany: {
+    textAlign: "right",
+  },
+  invoiceCompanyName: {
+    fontSize: "1.25rem",
+    fontWeight: "700",
+    margin: "0 0 0.5rem 0",
+    color: "#1a1a1a",
+  },
+  invoiceCompanyInfo: {
+    fontSize: "0.85rem",
+    color: "#6b7280",
+    margin: "0.25rem 0",
+  },
+  invoiceDocTitle: {
+    marginBottom: "1.5rem",
+  },
+  invoiceTitleText: {
+    fontSize: "1.75rem",
+    fontWeight: "700",
+    margin: "0 0 1rem 0",
+    color: "#1a1a1a",
+    letterSpacing: "0.05em",
+  },
+  invoiceMetaGrid: {
+    display: "flex",
+    gap: "2rem",
+  },
+  invoiceMetaLabel: {
+    fontSize: "0.75rem",
+    color: "#9ca3af",
+    margin: "0 0 0.25rem 0",
+    textTransform: "uppercase",
+  },
+  invoiceMetaValue: {
+    fontSize: "0.95rem",
+    fontWeight: "500",
+    margin: 0,
+    color: "#1a1a1a",
+  },
+  invoiceDocCustomer: {
+    marginBottom: "1.5rem",
+    padding: "1rem",
+    background: "#f9fafb",
+    borderRadius: "6px",
+  },
+  invoiceCustomerLabel: {
+    fontSize: "0.75rem",
+    color: "#9ca3af",
+    margin: "0 0 0.5rem 0",
+    textTransform: "uppercase",
+  },
+  invoiceCustomerName: {
+    fontSize: "1rem",
+    fontWeight: "600",
+    margin: "0 0 0.25rem 0",
+    color: "#1a1a1a",
+  },
+  invoiceCustomerInfo: {
+    fontSize: "0.9rem",
+    color: "#6b7280",
+    margin: 0,
+  },
+  invoiceDocLines: {
+    marginBottom: "1.5rem",
+  },
+  invoiceLineHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "0.75rem 0",
+    borderBottom: "2px solid #e5e5e5",
+    fontSize: "0.75rem",
+    fontWeight: "600",
+    color: "#6b7280",
+    textTransform: "uppercase",
+  },
+  invoiceLineDesc: {
+    flex: 1,
+  },
+  invoiceLineAmount: {
+    width: "120px",
+    textAlign: "right",
+  },
+  invoiceLine: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "0.75rem 0",
+    borderBottom: "1px solid #f3f4f6",
+    fontSize: "0.95rem",
+  },
+  invoiceLineTotal: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "1rem 0",
+    marginTop: "0.5rem",
+    borderTop: "2px solid #1a1a1a",
+  },
+  invoiceLineTotalLabel: {
+    fontSize: "1.1rem",
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  invoiceLineTotalAmount: {
+    width: "120px",
+    textAlign: "right",
+    fontSize: "1.25rem",
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  invoiceDocPayment: {
+    marginBottom: "1rem",
+    padding: "1rem",
+    background: "#f0fdf4",
+    borderRadius: "6px",
+    border: "1px solid #bbf7d0",
+  },
+  invoicePaymentTitle: {
+    fontSize: "0.85rem",
+    fontWeight: "600",
+    margin: "0 0 0.75rem 0",
+    color: "#166534",
+  },
+  invoicePaymentGrid: {
+    display: "flex",
+    gap: "2rem",
+  },
+  invoicePaymentLabel: {
+    fontSize: "0.75rem",
+    color: "#16a34a",
+    margin: "0 0 0.25rem 0",
+  },
+  invoicePaymentValue: {
+    fontSize: "0.95rem",
+    fontWeight: "600",
+    margin: 0,
+    color: "#166534",
+  },
+  invoicePaymentTerms: {
+    fontSize: "0.85rem",
+    color: "#166534",
+    margin: "0.75rem 0 0 0",
+    fontStyle: "italic",
+  },
+  invoiceDocNote: {
+    marginBottom: "1rem",
+    padding: "0.75rem",
+    background: "#fef3c7",
+    borderRadius: "6px",
+  },
+  invoiceNoteText: {
+    fontSize: "0.85rem",
+    color: "#92400e",
+    margin: 0,
+  },
+  invoiceDocFooter: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "1.5rem",
+    paddingTop: "1rem",
+    borderTop: "1px solid #e5e5e5",
+    fontSize: "0.8rem",
+    color: "#9ca3af",
   },
 };
 
