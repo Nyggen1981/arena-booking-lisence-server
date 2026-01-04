@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { LICENSE_TYPES, calculateMonthlyPrice, getLicensePrice, LicenseType } from "@/lib/license-config";
 
@@ -1015,6 +1015,28 @@ export default function InvoicesPage() {
               <h2 style={styles.previewTitle}>Forhåndsvisning av faktura</h2>
               <div style={styles.previewActions}>
                 <button 
+                  onClick={async () => {
+                    const invoiceEl = document.getElementById("invoice-document");
+                    if (invoiceEl) {
+                      // Dynamisk import av html2pdf
+                      const html2pdf = (await import("html2pdf.js")).default;
+                      
+                      const opt = {
+                        margin: [10, 10, 10, 10],
+                        filename: `Faktura-${previewInvoice.invoiceNumber}.pdf`,
+                        image: { type: "jpeg", quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true },
+                        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+                      };
+                      
+                      html2pdf().set(opt).from(invoiceEl).save();
+                    }
+                  }}
+                  style={styles.downloadButton}
+                >
+                  📄 Last ned PDF
+                </button>
+                <button 
                   onClick={() => {
                     const invoiceEl = document.getElementById("invoice-document");
                     if (invoiceEl) {
@@ -1051,9 +1073,9 @@ export default function InvoicesPage() {
                       }
                     }
                   }}
-                  style={styles.downloadButton}
+                  style={styles.printButton}
                 >
-                  📄 Last ned / Skriv ut
+                  🖨️ Skriv ut
                 </button>
                 <button onClick={() => setPreviewInvoice(null)} style={styles.closeButton}>×</button>
               </div>
@@ -1776,6 +1798,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "0.5rem",
     padding: "0.5rem 1rem",
     background: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: "500",
+  },
+  printButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.5rem 1rem",
+    background: "#6b7280",
     color: "#fff",
     border: "none",
     borderRadius: "6px",
