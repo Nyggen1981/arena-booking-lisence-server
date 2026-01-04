@@ -221,6 +221,32 @@ export default function InvoicesPage() {
     }
   };
 
+  const deleteInvoice = async (invoiceId: string) => {
+    if (!confirm("Er du sikker på at du vil slette denne fakturaen? Dette kan ikke angres.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: "DELETE",
+        headers: {
+          "x-admin-secret": password
+        }
+      });
+
+      if (response.ok) {
+        await loadInvoices(password);
+        setSuccess("Faktura slettet");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await response.json();
+        setError(data.error || "Kunne ikke slette faktura");
+      }
+    } catch (err) {
+      setError("Nettverksfeil");
+    }
+  };
+
   const saveCompanySettings = async () => {
     try {
       const response = await fetch("/api/settings/company", {
@@ -684,6 +710,14 @@ export default function InvoicesPage() {
                           style={{ ...styles.actionButton, background: "#ef4444" }}
                         >
                           Kanseller
+                        </button>
+                      )}
+                      {invoice.status === "cancelled" && (
+                        <button
+                          onClick={() => deleteInvoice(invoice.id)}
+                          style={{ ...styles.actionButton, background: "#7f1d1d" }}
+                        >
+                          🗑️ Slett
                         </button>
                       )}
                     </span>

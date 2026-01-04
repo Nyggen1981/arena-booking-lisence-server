@@ -129,3 +129,45 @@ export async function POST(
   }
 }
 
+// DELETE: Slett en faktura (kun kansellerte fakturaer)
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    // Sjekk at fakturaen er kansellert før sletting
+    const invoice = await prisma.invoice.findUnique({
+      where: { id }
+    });
+
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    if (invoice.status !== "cancelled") {
+      return NextResponse.json(
+        { error: "Only cancelled invoices can be deleted" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.invoice.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true, message: "Invoice deleted" });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+    console.error("Delete invoice error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
