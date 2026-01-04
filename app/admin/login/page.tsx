@@ -140,9 +140,9 @@ export default function AdminLoginPage() {
       >
         <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
           <img 
-            src="/sportflow-logo.png" 
+            src="/sportflow-logo-dark.png" 
             alt="SportFlow" 
-            style={{ height: "45px", marginBottom: "1rem" }}
+            style={{ height: "55px", marginBottom: "1rem" }}
           />
           <h1
             style={{

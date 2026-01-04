@@ -586,7 +586,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <img src="/sportflow-logo.png" alt="SportFlow" style={styles.headerLogo} />
+          <img src="/sportflow-logo-dark.png" alt="SportFlow" style={styles.headerLogo} />
           <div>
             <h1 style={styles.title}>Lisensadmin</h1>
             <p style={styles.subtitle}>{organizations.length} organisasjoner</p>
@@ -1433,7 +1433,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "1rem",
   },
   headerLogo: {
-    height: "40px",
+    height: "50px",
     width: "auto",
   },
   title: {
