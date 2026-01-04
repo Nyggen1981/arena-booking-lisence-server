@@ -108,6 +108,12 @@ export default function AdminDashboard() {
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
   const [selectedOrgForInvoice, setSelectedOrgForInvoice] = useState<string | null>(null);
   const [invoicePeriod, setInvoicePeriod] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear() });
+  const [editingCustomer, setEditingCustomer] = useState<Organization | null>(null);
+  const [customerForm, setCustomerForm] = useState<{
+    name: string;
+    contactEmail: string;
+    contactName: string;
+  }>({ name: "", contactEmail: "", contactName: "" });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -511,6 +517,46 @@ export default function AdminDashboard() {
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setError("Kunne ikke oppdatere grace period");
+      }
+    } catch (err) {
+      setError("Nettverksfeil");
+    }
+  };
+
+  const openCustomerEdit = (org: Organization) => {
+    setEditingCustomer(org);
+    setCustomerForm({
+      name: org.name,
+      contactEmail: org.contactEmail,
+      contactName: org.contactName || ""
+    });
+  };
+
+  const saveCustomerInfo = async () => {
+    if (!editingCustomer) return;
+
+    try {
+      const response = await fetch("/api/license/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-secret": password
+        },
+        body: JSON.stringify({
+          slug: editingCustomer.slug,
+          name: customerForm.name,
+          contactEmail: customerForm.contactEmail,
+          contactName: customerForm.contactName || null
+        })
+      });
+
+      if (response.ok) {
+        await loadOrganizations(password);
+        setEditingCustomer(null);
+        setSuccess("Kundeinformasjon oppdatert");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        setError("Kunne ikke oppdatere kunde");
       }
     } catch (err) {
       setError("Nettverksfeil");
@@ -1004,6 +1050,66 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Edit Customer Modal */}
+      {editingCustomer && (
+        <div style={styles.modalOverlay} onClick={() => setEditingCustomer(null)}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <h2 style={styles.modalTitle}>Rediger kundeinformasjon</h2>
+            <p style={styles.modalHint}>
+              Rediger informasjonen for {editingCustomer.name}
+            </p>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Navn *</label>
+              <input
+                type="text"
+                value={customerForm.name}
+                onChange={e => setCustomerForm({ ...customerForm, name: e.target.value })}
+                placeholder="F.eks. Haugesund IL"
+                required
+                style={styles.input}
+                autoFocus
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Kontakt-epost *</label>
+              <input
+                type="email"
+                value={customerForm.contactEmail}
+                onChange={e => setCustomerForm({ ...customerForm, contactEmail: e.target.value })}
+                placeholder="admin@klubb.no"
+                required
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Kontaktperson</label>
+              <input
+                type="text"
+                value={customerForm.contactName}
+                onChange={e => setCustomerForm({ ...customerForm, contactName: e.target.value })}
+                placeholder="Ola Nordmann"
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.modalActions}>
+              <button
+                onClick={() => setEditingCustomer(null)}
+                style={styles.cancelButton}
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={saveCustomerInfo}
+                style={styles.addButton}
+                disabled={!customerForm.name || !customerForm.contactEmail}
+              >
+                Lagre endringer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Organization Modal */}
       {showAddForm && (
         <div style={styles.modalOverlay} onClick={() => setShowAddForm(false)}>
@@ -1103,8 +1209,20 @@ export default function AdminDashboard() {
               <div key={org.id} style={styles.orgCard}>
                 <div style={styles.orgHeader}>
                   <div>
-                    <h3 style={styles.orgName}>{org.name}</h3>
-                    <p style={styles.orgSlug}>{org.slug} • {org.contactEmail}</p>
+                    <h3 style={styles.orgName}>
+                      {org.name}
+                      <button
+                        onClick={() => openCustomerEdit(org)}
+                        style={styles.editCustomerButton}
+                        title="Rediger kundeinformasjon"
+                      >
+                        ✏️
+                      </button>
+                    </h3>
+                    <p style={styles.orgSlug}>
+                      {org.slug} • {org.contactEmail}
+                      {org.contactName && ` • ${org.contactName}`}
+                    </p>
                   </div>
                   <span style={{
                     ...styles.statusBadge,
@@ -1629,6 +1747,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "1.1rem",
     fontWeight: "600",
     margin: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+  editCustomerButton: {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "0.9rem",
+    opacity: 0.6,
+    padding: "0.25rem",
+    borderRadius: "4px",
   },
   orgSlug: {
     fontSize: "0.8rem",

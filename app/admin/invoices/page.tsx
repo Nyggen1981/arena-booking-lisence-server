@@ -1068,6 +1068,15 @@ export default function InvoicesPage() {
                   <p style={styles.invoiceCustomerInfo}>{previewInvoice.organization.contactEmail}</p>
                 </div>
 
+                {/* Produkt-info */}
+                <div style={styles.invoiceProductInfo}>
+                  <p style={styles.invoiceProductLabel}>Fakturert for:</p>
+                  <p style={styles.invoiceProductName}>SportFlow Booking</p>
+                  <p style={styles.invoiceProductDesc}>
+                    Lisensmodell: <strong>{previewInvoice.licenseTypeName}</strong>
+                  </p>
+                </div>
+
                 {/* Faktura-linjer */}
                 <div style={styles.invoiceDocLines}>
                   <div style={styles.invoiceLineHeader}>
@@ -1075,14 +1084,37 @@ export default function InvoicesPage() {
                     <span style={styles.invoiceLineAmount}>Beløp</span>
                   </div>
                   
+                  {/* SportFlow abonnement */}
                   <div style={styles.invoiceLine}>
                     <span style={styles.invoiceLineDesc}>
-                      {previewInvoice.licenseTypeName} - {getMonthName(previewInvoice.periodMonth)} {previewInvoice.periodYear}
+                      <strong>SportFlow</strong> - {previewInvoice.licenseTypeName}
+                      <br />
+                      <span style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                        Periode: {getMonthName(previewInvoice.periodMonth)} {previewInvoice.periodYear}
+                      </span>
                     </span>
                     <span style={styles.invoiceLineAmount}>{previewInvoice.basePrice.toLocaleString()} kr</span>
                   </div>
 
-                  {previewInvoice.modulePrice > 0 && (
+                  {/* Vis moduler hvis det er noen */}
+                  {previewInvoice.modules && (() => {
+                    try {
+                      const modules = JSON.parse(previewInvoice.modules);
+                      return modules.filter((m: { price: number }) => m.price > 0).map((mod: { key: string; name: string; price: number }) => (
+                        <div key={mod.key} style={styles.invoiceLine}>
+                          <span style={styles.invoiceLineDesc}>
+                            Tilleggsmodul: {mod.name}
+                          </span>
+                          <span style={styles.invoiceLineAmount}>{mod.price.toLocaleString()} kr</span>
+                        </div>
+                      ));
+                    } catch {
+                      return null;
+                    }
+                  })()}
+
+                  {/* Fallback hvis moduler ikke kan parses men har pris */}
+                  {previewInvoice.modulePrice > 0 && !previewInvoice.modules && (
                     <div style={styles.invoiceLine}>
                       <span style={styles.invoiceLineDesc}>Tilleggsmoduler</span>
                       <span style={styles.invoiceLineAmount}>{previewInvoice.modulePrice.toLocaleString()} kr</span>
@@ -1097,7 +1129,7 @@ export default function InvoicesPage() {
                   )}
 
                   <div style={styles.invoiceLineTotal}>
-                    <span style={styles.invoiceLineTotalLabel}>Totalt</span>
+                    <span style={styles.invoiceLineTotalLabel}>Totalt å betale</span>
                     <span style={styles.invoiceLineTotalAmount}>{previewInvoice.amount.toLocaleString()} kr</span>
                   </div>
                 </div>
@@ -1688,13 +1720,13 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   invoiceDocLogo: {},
   invoiceLogoImg: {
-    maxWidth: "180px",
-    maxHeight: "70px",
+    maxWidth: "250px",
+    maxHeight: "100px",
     objectFit: "contain",
   },
   invoiceLogoPlaceholder: {
-    width: "120px",
-    height: "50px",
+    width: "180px",
+    height: "70px",
     background: "#f3f4f6",
     display: "flex",
     alignItems: "center",
@@ -1764,6 +1796,31 @@ const styles: { [key: string]: React.CSSProperties } = {
   invoiceCustomerInfo: {
     fontSize: "0.9rem",
     color: "#6b7280",
+    margin: 0,
+  },
+  invoiceProductInfo: {
+    marginBottom: "1.5rem",
+    padding: "1rem",
+    background: "#eef2ff",
+    borderRadius: "6px",
+    borderLeft: "4px solid #6366f1",
+  },
+  invoiceProductLabel: {
+    fontSize: "0.75rem",
+    color: "#6366f1",
+    margin: "0 0 0.5rem 0",
+    textTransform: "uppercase",
+    fontWeight: "600",
+  },
+  invoiceProductName: {
+    fontSize: "1.1rem",
+    fontWeight: "700",
+    margin: "0 0 0.25rem 0",
+    color: "#1a1a1a",
+  },
+  invoiceProductDesc: {
+    fontSize: "0.9rem",
+    color: "#4b5563",
     margin: 0,
   },
   invoiceDocLines: {
