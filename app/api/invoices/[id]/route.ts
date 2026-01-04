@@ -10,15 +10,17 @@ function isAuthorized(request: Request): boolean {
 // GET: Hent en spesifikk faktura
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
+
   try {
     const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         organization: {
           select: {
@@ -47,11 +49,13 @@ export async function GET(
 // POST: Oppdater faktura (status, betalingsdato, etc.)
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { id } = await params;
 
   let body: {
     status?: string;
@@ -100,7 +104,7 @@ export async function POST(
     }
 
     const invoice = await prisma.invoice.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         organization: {
