@@ -1013,12 +1013,55 @@ export default function InvoicesPage() {
           <div style={styles.previewModal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.previewHeader}>
               <h2 style={styles.previewTitle}>Forhåndsvisning av faktura</h2>
-              <button onClick={() => setPreviewInvoice(null)} style={styles.closeButton}>×</button>
+              <div style={styles.previewActions}>
+                <button 
+                  onClick={() => {
+                    const invoiceEl = document.getElementById("invoice-document");
+                    if (invoiceEl) {
+                      const printWindow = window.open("", "_blank");
+                      if (printWindow) {
+                        printWindow.document.write(`
+                          <!DOCTYPE html>
+                          <html>
+                          <head>
+                            <title>Faktura ${previewInvoice.invoiceNumber}</title>
+                            <style>
+                              * { margin: 0; padding: 0; box-sizing: border-box; }
+                              body { 
+                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                font-size: 11px;
+                                line-height: 1.4;
+                                padding: 20px;
+                              }
+                              @media print {
+                                body { padding: 0; }
+                                @page { margin: 15mm; }
+                              }
+                            </style>
+                          </head>
+                          <body>
+                            ${invoiceEl.outerHTML}
+                          </body>
+                          </html>
+                        `);
+                        printWindow.document.close();
+                        setTimeout(() => {
+                          printWindow.print();
+                        }, 250);
+                      }
+                    }
+                  }}
+                  style={styles.downloadButton}
+                >
+                  📄 Last ned / Skriv ut
+                </button>
+                <button onClick={() => setPreviewInvoice(null)} style={styles.closeButton}>×</button>
+              </div>
             </div>
             
             <div style={styles.invoicePreview}>
               {/* Faktura-dokument - Conta-stil */}
-              <div style={styles.invoiceDocument}>
+              <div id="invoice-document" style={styles.invoiceDocument}>
                 
                 {/* Topp-seksjon med logo og bedriftsinfo */}
                 <div style={styles.invHeader}>
@@ -1721,6 +1764,24 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "1.1rem",
     fontWeight: "600",
     margin: 0,
+  },
+  previewActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+  },
+  downloadButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.5rem 1rem",
+    background: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: "500",
   },
   invoicePreview: {
     padding: "1.5rem",
