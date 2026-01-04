@@ -1172,6 +1172,13 @@ export default function InvoicesPage() {
                   </div>
                 </div>
 
+                {/* Notat */}
+                {companySettings.invoiceNote && (
+                  <div style={styles.invNote}>
+                    <p style={styles.invNoteText}>{companySettings.invoiceNote}</p>
+                  </div>
+                )}
+
                 {/* Footer */}
                 <div style={styles.invFooter}>
                   <p style={styles.invFooterLine}>
@@ -1739,8 +1746,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   invLogoSection: {},
   invLogo: {
-    maxWidth: "280px",
-    maxHeight: "100px",
+    maxWidth: "320px",
+    maxHeight: "120px",
     objectFit: "contain",
   },
   invLogoPlaceholder: {
@@ -1975,6 +1982,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: "600",
     color: "#1a1a1a",
     margin: "0 0 15px 0",
+  },
+  invNote: {
+    marginTop: "20px",
+    padding: "12px 15px",
+    background: "#fef3c7",
+    borderRadius: "6px",
+    borderLeft: "4px solid #f59e0b",
+  },
+  invNoteText: {
+    fontSize: "11px",
+    color: "#92400e",
+    margin: 0,
+    lineHeight: "1.5",
   },
   invFooter: {
     marginTop: "30px",
