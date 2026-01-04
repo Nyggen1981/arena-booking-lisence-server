@@ -1056,7 +1056,7 @@ export default function InvoicesPage() {
                       const html2pdf = (await import("html2pdf.js")).default;
                       
                       const opt = {
-                        margin: [10, 10, 10, 10],
+                        margin: 10,
                         filename: `Faktura-${previewInvoice.invoiceNumber}.pdf`,
                         image: { type: "jpeg", quality: 0.98 },
                         html2canvas: { scale: 2, useCORS: true },
